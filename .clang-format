@@ -1,0 +1,52 @@
+---
+# Loosely inspired by Clausewitz style
+BasedOnStyle: WebKit
+Language: Cpp
+TabWidth: 4
+UseTab: Always
+ColumnLimit: 140
+ 
+SortIncludes: true
+SortUsingDeclarations: true
+ 
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: false
+AlignEscapedNewlines: DontAlign
+PointerAlignment: Left
+ 
+AllowShortIfStatementsOnASingleLine: Never
+ 
+AlwaysBreakTemplateDeclarations: true
+ 
+BinPackArguments: false
+BinPackParameters: false
+PenaltyBreakAssignment: 10000
+ 
+BreakBeforeBraces: Allman
+ 
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: true
+SpacesInSquareBrackets: true
+ 
+IndentCaseLabels: true
+NamespaceIndentation: All
+MaxEmptyLinesToKeep: 3
+ 
+CompactNamespaces: false
+BreakInheritanceList: AfterColon
+ReflowComments: false
+ 
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortLambdasOnASingleLine: All
+ 
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+ 
+SpaceBeforeCtorInitializerColon: true
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+ 
+IncludeBlocks: Regroup
