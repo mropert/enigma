@@ -5,7 +5,7 @@ using enigma::rotor;
 
 m4_machine::m4_machine( const std::array<rotor, 4>& rotors,
 						std::array<char, 4> ring_settings,
-						std::string_view reflector,
+						reflector reflector,
 						std::span<const char* const> plugs )
 	: m_rotors( rotors )
 	, m_rings_settings( ring_settings )
@@ -69,7 +69,7 @@ std::string m4_machine::decode( std::string_view message, std::string_view key )
 		input = m_rotors[ 1 ].m_wiring[ input - 'A' + offsets[ 1 ] - offsets[ 2 ] + 26 ];
 		input = m_rotors[ 0 ].m_wiring[ input - 'A' + offsets[ 0 ] - offsets[ 1 ] + 26 ];
 
-		input = m_reflector[ ( input - 'A' - offsets[ 0 ] + 26 ) % 26 ];
+		input = m_reflector.m_wiring[ input - 'A' - offsets[ 0 ] + 26 ];
 
 		input = m_rotors[ 0 ].m_reversed_wiring[ input - 'A' + offsets[ 0 ] + 26 ];
 		input = m_rotors[ 1 ].m_reversed_wiring[ input - 'A' + offsets[ 1 ] - offsets[ 0 ] + 26 ];

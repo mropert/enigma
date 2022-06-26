@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <span>
 #include <string>
@@ -50,10 +51,21 @@ namespace enigma
 		Gamma
 	};
 
+	struct reflector
+	{
+		explicit constexpr reflector( std::string_view wiring )
+		{
+			std::copy_n( begin( wiring ), 26, begin( m_wiring ) );
+			std::copy_n( begin( wiring ), 26, begin( m_wiring ) + 26 );
+			std::copy_n( begin( wiring ), 26, begin( m_wiring ) + ( 26 * 2 ) );
+		}
+		std::array<char, 26 * 3> m_wiring;
+	};
+
 	namespace reflectors
 	{
-		static constexpr std::string_view B = "ENKQAUYWJICOPBLMDXZVFTHRGS";
-		static constexpr std::string_view C = "RDOBJNTKVEHMLFCWZAXGYIPSUQ";
+		static constexpr reflector B( "ENKQAUYWJICOPBLMDXZVFTHRGS" );
+		static constexpr reflector C( "RDOBJNTKVEHMLFCWZAXGYIPSUQ" );
 	}
 
 
@@ -61,14 +73,14 @@ namespace enigma
 	{
 		m4_machine( const std::array<rotor, 4>& rotors,
 					std::array<char, 4> ring_settings,
-					std::string_view reflector,
+					reflector reflector,
 					std::span<const char* const> plugs );
 
 		std::string decode( std::string_view message, std::string_view key );
 
 		std::array<rotor, 4> m_rotors;
 		std::array<char, 4> m_rings_settings;
-		std::string_view m_reflector;
+		reflector m_reflector;
 		std::array<char, 26> m_plugboard;
 	};
 
