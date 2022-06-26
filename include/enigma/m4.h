@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <array>
 #include <span>
@@ -69,19 +71,22 @@ namespace enigma
 	}
 
 
-	struct m4_machine
+	class m4_machine
 	{
+	public:
 		m4_machine( const std::array<rotor, 4>& rotors,
 					std::array<char, 4> ring_settings,
 					reflector reflector,
 					std::span<const char* const> plugs );
 
-		std::string decode( std::string_view message, std::string_view key );
+		void decode( std::string_view message, std::string_view key, std::string& output ) const;
+		// Convenience method for one shot decodes (no ouput buffer reuse)
+		std::string decode( std::string_view message, std::string_view key ) const;
 
+	private:
 		std::array<rotor, 4> m_rotors;
 		std::array<char, 4> m_rings_settings;
 		reflector m_reflector;
 		std::array<char, 26> m_plugboard;
 	};
-
 }

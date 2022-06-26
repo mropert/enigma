@@ -1,4 +1,4 @@
-#include "enigma.h"
+#include "enigma/m4.h"
 
 using enigma::m4_machine;
 using enigma::rotor;
@@ -34,10 +34,9 @@ m4_machine::m4_machine( const std::array<rotor, 4>& rotors,
 	}
 }
 
-std::string m4_machine::decode( std::string_view message, std::string_view key )
+void m4_machine::decode( std::string_view message, std::string_view key, std::string& output ) const
 {
-	std::string result;
-	result.resize( message.size(), 'A' );
+	output.resize( message.size(), 'A' );
 
 	const std::array<char, 4> start_positions = { key[ 0 ] - 'A', key[ 1 ] - 'A', key[ 2 ] - 'A', key[ 3 ] - 'A' };
 
@@ -46,7 +45,7 @@ std::string m4_machine::decode( std::string_view message, std::string_view key )
 								   start_positions[ 2 ] - m_rings_settings[ 2 ],
 								   start_positions[ 3 ] - m_rings_settings[ 3 ] };
 
-	auto output = begin( result );
+	auto output_iterator = begin( output );
 	for ( const auto character : message )
 	{
 		char input = character;
@@ -81,7 +80,13 @@ std::string m4_machine::decode( std::string_view message, std::string_view key )
 
 		input = m_plugboard[ input - 'A' ];
 
-		*output++ = input;
+		*output_iterator++ = input;
 	}
+}
+
+std::string m4_machine::decode( std::string_view message, std::string_view key ) const
+{
+	std::string result;
+	decode( message, key, result );
 	return result;
 }
