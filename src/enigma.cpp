@@ -1,58 +1,24 @@
 #include "enigma.h"
 
 using enigma::m4_machine;
+using enigma::rotor;
 
-namespace rotors
+m4_machine::m4_machine( const std::array<rotor, 4>& rotors,
+						std::array<char, 4> ring_settings,
+						std::string_view reflector,
+						std::span<const char* const> plugs )
+	: m_rotors( rotors )
+	, m_rings_settings( ring_settings )
+	, m_reflector( reflector )
 {
-	const char ETW[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	const char I[] = "EKMFLGDQVZNTOWYHXUSPAIBRCJ";
-	const char II[] = "AJDKSIRUXBLHWTMCQGZNPYFVOE";
-	const char III[] = "BDFHJLCPRTXVZNYEIWGAKMUSQO";
-	const char IV[] = "ESOVPZJAYQUIRHXLNFTGKDCMWB";
-	const char V[] = "VZBRGITYUPSDNHLXAWMJQOFECK";
-	const char VI[] = "JPGVOUMFYQBENHZRDKASXLICTW";
-	const char VII[] = "NZJHGRCXMYSWBOUFAIVLPEKQDT";
-	const char VIII[] = "FKQHTLXOCBJSPDZRAMEWNIUYGV";
-	const char Beta[] = "LEYJVCNIXWPBQMDRTAKZGFUHOS";
-	const char Gamma[] = "FSOKANUERHMBTIYCWLQPZXVGJD";
-}
-
-namespace reflectors
-{
-	const char B[] = "ENKQAUYWJICOPBLMDXZVFTHRGS";
-	const char C[] = "RDOBJNTKVEHMLFCWZAXGYIPSUQ";
-}
-
-m4_machine::m4_machine()
-	: m_wheels( {
-		rotors::Beta,
-		rotors::V,
-		rotors::VI,
-		rotors::VIII,
-	} )
-	, m_reflector( reflectors::C )
-{
-	m_wheels_positions[ 0 ] = 'Y' - 'A';
-	m_wheels_positions[ 1 ] = 'O' - 'A';
-	m_wheels_positions[ 2 ] = 'S' - 'A';
-	m_wheels_positions[ 3 ] = 'Z' - 'A';
-
-	m_rings_settings[ 0 ] = 'A' - 'A';
-	m_rings_settings[ 1 ] = 'A' - 'A';
-	m_rings_settings[ 2 ] = 'E' - 'A';
-	m_rings_settings[ 3 ] = 'L' - 'A';
-
-	m_turnovers[ 0 ] = { -1, -1 };
-	m_turnovers[ 1 ] = { ( 25 + 26 - m_rings_settings[ 1 ] ) % 26, -1 };
-	m_turnovers[ 2 ] = { ( 12 + 26 - m_rings_settings[ 2 ] ) % 26, ( 25 + 26 - m_rings_settings[ 2 ] ) % 26 };
-	m_turnovers[ 3 ] = { ( 12 + 26 - m_rings_settings[ 3 ] ) % 26, ( 25 + 26 - m_rings_settings[ 3 ] ) % 26 };
-
-	for ( int i = 0; i < m_wheels.size(); ++i )
+	for ( int i = 0; i < 4; ++i )
 	{
-		m_reversed_wheels[ i ].resize( m_wheels[ i ].size(), 0 );
-		for ( int j = 0; j < m_wheels[ i ].size(); ++j )
+		for ( int j = 0; j < 2; ++j )
 		{
-			m_reversed_wheels[ i ][ m_wheels[ i ][ j ] - 'A' ] = 'A' + j;
+			if ( m_rotors[ i ].m_turnovers[ j ] != -1 )
+			{
+				m_rotors[ i ].m_turnovers[ j ] = ( m_rotors[ i ].m_turnovers[ j ] + 26 - m_rings_settings[ i ] ) % 26;
+			}
 		}
 	}
 
@@ -61,32 +27,34 @@ m4_machine::m4_machine()
 		m_plugboard[ i ] = 'A' + i;
 	}
 
-	for ( auto pPair : { "AE", "BF", "CM", "DQ", "HU", "JN", "LX", "PR", "SZ", "VW" } )
+	for ( auto pair : plugs )
 	{
-		m_plugboard[ pPair[ 0 ] - 'A' ] = pPair[ 1 ];
-		m_plugboard[ pPair[ 1 ] - 'A' ] = pPair[ 0 ];
+		m_plugboard[ pair[ 0 ] - 'A' ] = pair[ 1 ];
+		m_plugboard[ pair[ 1 ] - 'A' ] = pair[ 0 ];
 	}
 }
 
-std::string m4_machine::decode( const std::string& message )
+std::string m4_machine::decode( std::string_view message, std::string_view key )
 {
 	std::string result;
 	result.reserve( message.size() );
 
-	std::array<int, 4> offsets = { m_wheels_positions[ 0 ] - m_rings_settings[ 0 ],
-								   m_wheels_positions[ 1 ] - m_rings_settings[ 1 ],
-								   m_wheels_positions[ 2 ] - m_rings_settings[ 2 ],
-								   m_wheels_positions[ 3 ] - m_rings_settings[ 3 ] };
+	const std::array<char, 4> start_positions = { key[ 0 ] - 'A', key[ 1 ] - 'A', key[ 2 ] - 'A', key[ 3 ] - 'A' };
+
+	std::array<int, 4> offsets = { start_positions[ 0 ] - m_rings_settings[ 0 ],
+								   start_positions[ 1 ] - m_rings_settings[ 1 ],
+								   start_positions[ 2 ] - m_rings_settings[ 2 ],
+								   start_positions[ 3 ] - m_rings_settings[ 3 ] };
 
 	for ( const auto character : message )
 	{
 		char input = character;
 
-		if ( m_turnovers[ 3 ][ 0 ] == ( offsets[ 3 ] % 26 ) || m_turnovers[ 3 ][ 1 ] == ( offsets[ 3 ] % 26 ) )
+		if ( m_rotors[ 3 ].m_turnovers[ 0 ] == ( offsets[ 3 ] % 26 ) || m_rotors[ 3 ].m_turnovers[ 1 ] == ( offsets[ 3 ] % 26 ) )
 		{
 			offsets[ 2 ] = ( offsets[ 2 ] + 1 ) % 26;
 		}
-		else if ( m_turnovers[ 2 ][ 0 ] == ( offsets[ 2 ] % 26 ) || m_turnovers[ 2 ][ 1 ] == ( offsets[ 2 ] % 26 ) )
+		else if ( m_rotors[ 2 ].m_turnovers[ 0 ] == ( offsets[ 2 ] % 26 ) || m_rotors[ 2 ].m_turnovers[ 1 ] == ( offsets[ 2 ] % 26 ) )
 		{
 			offsets[ 2 ] = ( offsets[ 2 ] + 1 ) % 26;
 			offsets[ 1 ] = ( offsets[ 1 ] + 1 ) % 26;
@@ -96,19 +64,19 @@ std::string m4_machine::decode( const std::string& message )
 
 		input = m_plugboard[ input - 'A' ];
 
-		input = m_wheels[ 3 ][ ( input - 'A' + offsets[ 3 ] + 26 ) % 26 ];
-		input = m_wheels[ 2 ][ ( input - 'A' + offsets[ 2 ] - offsets[ 3 ] + 26 ) % 26 ];
-		input = m_wheels[ 1 ][ ( input - 'A' + offsets[ 1 ] - offsets[ 2 ] + 26 ) % 26 ];
-		input = m_wheels[ 0 ][ ( input - 'A' + offsets[ 0 ] - offsets[ 1 ] + 26 ) % 26 ];
+		input = m_rotors[ 3 ].m_wiring[ ( input - 'A' + offsets[ 3 ] + 26 ) % 26 ];
+		input = m_rotors[ 2 ].m_wiring[ ( input - 'A' + offsets[ 2 ] - offsets[ 3 ] + 26 ) % 26 ];
+		input = m_rotors[ 1 ].m_wiring[ ( input - 'A' + offsets[ 1 ] - offsets[ 2 ] + 26 ) % 26 ];
+		input = m_rotors[ 0 ].m_wiring[ ( input - 'A' + offsets[ 0 ] - offsets[ 1 ] + 26 ) % 26 ];
 
 		input = m_reflector[ ( input - 'A' - offsets[ 0 ] + 26 ) % 26 ];
 
-		input = m_reversed_wheels[ 0 ][ ( input - 'A' + offsets[ 0 ] + 26 ) % 26 ];
-		input = m_reversed_wheels[ 1 ][ ( input - 'A' + offsets[ 1 ] - offsets[ 0 ] + 26 ) % 26 ];
-		input = m_reversed_wheels[ 2 ][ ( input - 'A' + offsets[ 2 ] - offsets[ 1 ] + 26 ) % 26 ];
-		input = m_reversed_wheels[ 3 ][ ( input - 'A' + offsets[ 3 ] - offsets[ 2 ] + 26 ) % 26 ];
+		input = m_rotors[ 0 ].m_reversed_wiring[ ( input - 'A' + offsets[ 0 ] + 26 ) % 26 ];
+		input = m_rotors[ 1 ].m_reversed_wiring[ ( input - 'A' + offsets[ 1 ] - offsets[ 0 ] + 26 ) % 26 ];
+		input = m_rotors[ 2 ].m_reversed_wiring[ ( input - 'A' + offsets[ 2 ] - offsets[ 1 ] + 26 ) % 26 ];
+		input = m_rotors[ 3 ].m_reversed_wiring[ ( input - 'A' + offsets[ 3 ] - offsets[ 2 ] + 26 ) % 26 ];
 
-		input = rotors::ETW[ ( input - 'A' - offsets[ 3 ] + 26 ) % 26 ];
+		input = enigma::rotors[ static_cast<int>( enigma::rotor_index::ETW ) ].m_wiring[ ( input - 'A' - offsets[ 3 ] + 26 ) % 26 ];
 
 		input = m_plugboard[ input - 'A' ];
 

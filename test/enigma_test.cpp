@@ -2,6 +2,8 @@
 
 #include <catch.hpp>
 
+using namespace enigma;
+
 TEST_CASE( "Decode Donitz message with M4", "[m4]" )
 {
 	const std::string message = "LANOTCTOUARBBFPMHPHGCZXTDYGAHGUFXGEWKBLKGJWLQXXTGPJJAVTOYJFGSLPPQIHZFXOEBWIIEKFZLCLOAQJULJOYHSSMBBGWHZANVO"
@@ -15,8 +17,11 @@ TEST_CASE( "Decode Donitz message with M4", "[m4]" )
 										"LLMACHTUNTERWEGSXABSOFORTSOLLENSIESAEMTLICHEMASSNAHMENVERFUEGENYDIESICHAUSDERGEGENWAERTIGENLAGEERG"
 										"EBENXGEZXREICHSLEITEIKKTULPEKKJBORMANNJXXOBXDXMMMDURNHFKSTXKOMXADMXUUUBOOIEXKP";
 
-	enigma::m4_machine machine;
-	const auto result = machine.decode( message );
+	const std::array<rotor, 4> wheels = { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] };
+	const std::array plugs = { "AE", "BF", "CM", "DQ", "HU", "JN", "LX", "PR", "SZ", "VW" };
+
+	m4_machine machine( wheels, { 0, 0, 4, 11 }, reflectors::C, plugs );
+	const auto result = machine.decode( message, "YOSZ" );
 
 	REQUIRE( result == decoded_message );
 }

@@ -1,23 +1,76 @@
 #include <array>
+#include <span>
 #include <string>
 #include <string_view>
 
 namespace enigma
 {
+	struct rotor
+	{
+		constexpr rotor( std::string_view wiring, std::array<char, 2> turnover )
+			: m_wiring( wiring )
+			, m_turnovers( turnover )
+		{
+			for ( int i = 0; i < 26; ++i )
+			{
+				m_reversed_wiring[ m_wiring[ i ] - 'A' ] = 'A' + i;
+			}
+		}
+
+		std::string_view m_wiring;
+		std::array<char, 26> m_reversed_wiring;
+		std::array<char, 2> m_turnovers;
+	};
+
+	static constexpr std::array<rotor, 11> rotors = {
+		rotor { "ABCDEFGHIJKLMNOPQRSTUVWXYZ", { 0, -1 } },
+		{ "EKMFLGDQVZNTOWYHXUSPAIBRCJ", { 16, -1 } },
+		{ "AJDKSIRUXBLHWTMCQGZNPYFVOE", { 4, -1 } },
+		{ "BDFHJLCPRTXVZNYEIWGAKMUSQO", { 21, -1 } },
+		{ "ESOVPZJAYQUIRHXLNFTGKDCMWB", { 9, -1 } },
+		{ "VZBRGITYUPSDNHLXAWMJQOFECK", { 25, -1 } },
+		{ "JPGVOUMFYQBENHZRDKASXLICTW", { 12, 25 } },
+		{ "NZJHGRCXMYSWBOUFAIVLPEKQDT", { 12, 25 } },
+		{ "FKQHTLXOCBJSPDZRAMEWNIUYGV", { 12, 25 } },
+		{ "LEYJVCNIXWPBQMDRTAKZGFUHOS", { -1, 25 } },
+		{ "FSOKANUERHMBTIYCWLQPZXVGJD", { -1, -1 } }
+	};
+
+	enum class rotor_index
+	{
+		ETW = 0,
+		I,
+		II,
+		III,
+		IV,
+		V,
+		VI,
+		VII,
+		VIII,
+		Beta,
+		Gamma
+	};
+
+	namespace reflectors
+	{
+		static constexpr std::string_view B = "ENKQAUYWJICOPBLMDXZVFTHRGS";
+		static constexpr std::string_view C = "RDOBJNTKVEHMLFCWZAXGYIPSUQ";
+	}
+
 
 	struct m4_machine
 	{
-		m4_machine();
+		m4_machine( const std::array<rotor, 4>& rotors,
+					std::array<char, 4> ring_settings,
+					std::string_view reflector,
+					std::span<const char* const> plugs );
 
-		std::string decode( const std::string& message );
+		std::string decode( std::string_view message, std::string_view key );
 
-		std::array<std::string_view, 4> m_wheels;
-		std::array<std::string, 4> m_reversed_wheels;
-		std::array<int, 4> m_wheels_positions;
-		std::array<int, 4> m_rings_settings;
-		std::array<std::array<int, 2>, 4> m_turnovers;
+		std::array<rotor, 4> m_rotors;
+		std::array<char, 4> m_rings_settings;
 		std::string_view m_reflector;
-		std::array <char, 26> m_plugboard;
+		std::array<char, 26> m_plugboard;
 	};
 
 }
