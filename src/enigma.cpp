@@ -64,19 +64,19 @@ std::string m4_machine::decode( std::string_view message, std::string_view key )
 
 		input = m_plugboard[ input - 'A' ];
 
-		input = m_rotors[ 3 ].m_wiring[ ( input - 'A' + offsets[ 3 ] + 26 ) % 26 ];
-		input = m_rotors[ 2 ].m_wiring[ ( input - 'A' + offsets[ 2 ] - offsets[ 3 ] + 26 ) % 26 ];
-		input = m_rotors[ 1 ].m_wiring[ ( input - 'A' + offsets[ 1 ] - offsets[ 2 ] + 26 ) % 26 ];
-		input = m_rotors[ 0 ].m_wiring[ ( input - 'A' + offsets[ 0 ] - offsets[ 1 ] + 26 ) % 26 ];
+		input = m_rotors[ 3 ].m_wiring[ input - 'A' + offsets[ 3 ] + 26 ];
+		input = m_rotors[ 2 ].m_wiring[ input - 'A' + offsets[ 2 ] - offsets[ 3 ] + 26 ];
+		input = m_rotors[ 1 ].m_wiring[ input - 'A' + offsets[ 1 ] - offsets[ 2 ] + 26 ];
+		input = m_rotors[ 0 ].m_wiring[ input - 'A' + offsets[ 0 ] - offsets[ 1 ] + 26 ];
 
 		input = m_reflector[ ( input - 'A' - offsets[ 0 ] + 26 ) % 26 ];
 
-		input = m_rotors[ 0 ].m_reversed_wiring[ ( input - 'A' + offsets[ 0 ] + 26 ) % 26 ];
-		input = m_rotors[ 1 ].m_reversed_wiring[ ( input - 'A' + offsets[ 1 ] - offsets[ 0 ] + 26 ) % 26 ];
-		input = m_rotors[ 2 ].m_reversed_wiring[ ( input - 'A' + offsets[ 2 ] - offsets[ 1 ] + 26 ) % 26 ];
-		input = m_rotors[ 3 ].m_reversed_wiring[ ( input - 'A' + offsets[ 3 ] - offsets[ 2 ] + 26 ) % 26 ];
+		input = m_rotors[ 0 ].m_reversed_wiring[ input - 'A' + offsets[ 0 ] + 26 ];
+		input = m_rotors[ 1 ].m_reversed_wiring[ input - 'A' + offsets[ 1 ] - offsets[ 0 ] + 26 ];
+		input = m_rotors[ 2 ].m_reversed_wiring[ input - 'A' + offsets[ 2 ] - offsets[ 1 ] + 26 ];
+		input = m_rotors[ 3 ].m_reversed_wiring[ input - 'A' + offsets[ 3 ] - offsets[ 2 ] + 26 ];
 
-		input = enigma::rotors[ static_cast<int>( enigma::rotor_index::ETW ) ].m_wiring[ ( input - 'A' - offsets[ 3 ] + 26 ) % 26 ];
+		input = enigma::rotors[ static_cast<int>( enigma::rotor_index::ETW ) ].m_wiring[ input - 'A' - offsets[ 3 ] + 26 ];
 
 		input = m_plugboard[ input - 'A' ];
 
