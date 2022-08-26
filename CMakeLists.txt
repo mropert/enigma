@@ -14,6 +14,6 @@ target_link_libraries(enigma PRIVATE enigma_lib)
 
 enable_testing()
 
-add_executable(enigma_test test/catch_main.cpp test/enigma_test.cpp)
+add_executable(enigma_test test/enigma_test.cpp)
 target_link_libraries(enigma_test PRIVATE enigma_lib)
-target_link_libraries(enigma_test PRIVATE Catch2::Catch2)
+target_link_libraries(enigma_test PRIVATE Catch2::Catch2WithMain)
