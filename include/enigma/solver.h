@@ -2,6 +2,11 @@
 
 #include "enigma/m4.h"
 
+#include <array>
+#include <functional>
+#include <string>
+#include <string_view>
+
 namespace enigma
 {
 	namespace m4_solver
@@ -20,8 +25,11 @@ namespace enigma
 									 std::span<const char* const> plugs,
 									 std::string_view plaintext );
 
-		settings
-		brute_force( std::string_view message, reflector reflector, std::span<const char* const> plugs, std::string_view plaintext );
+		settings brute_force( std::string_view message,
+							  reflector reflector,
+							  std::span<const char* const> plugs,
+							  std::string_view plaintext,
+							  std::function<void( std::size_t, std::size_t )> progress_update = {} );
 	}
 
 }

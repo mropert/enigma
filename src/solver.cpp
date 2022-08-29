@@ -5,9 +5,15 @@
 
 using namespace enigma;
 
-m4_solver::settings
-m4_solver::brute_force( std::string_view message, reflector reflector, std::span<const char* const> plugs, std::string_view plaintext )
+m4_solver::settings m4_solver::brute_force( std::string_view message,
+											reflector reflector,
+											std::span<const char* const> plugs,
+											std::string_view plaintext,
+											std::function<void( std::size_t, std::size_t )> progress_update )
 {
+	std::size_t progress = 0;
+	const std::size_t total = std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26 * 26 * 26 * 26 * 26;
+
 	std::array<rotor, 4> wheels = { rotors[ 0 ], rotors[ 0 ], rotors[ 0 ], rotors[ 0 ] };
 
 	// Leftmost rotor, beta or gamma
@@ -41,9 +47,11 @@ m4_solver::brute_force( std::string_view message, reflector reflector, std::span
 					{
 						for ( char right_ring_setting = 0; right_ring_setting < 26; ++right_ring_setting )
 						{
+							#ifdef _DEBUG
 							std::cout << "Trying rotors (" << int( left_idx ) << ", " << int( middle_left_index ) << ", "
 									  << int( middle_right_index ) << ", " << int( right_index ) << "), settings (0, 0, "
 									  << int( middle_right_ring_setting ) << ", " << int( right_ring_setting ) << ")" << std::endl;
+							#endif
 
 
 							const auto key = brute_force_key( message,
@@ -57,6 +65,12 @@ m4_solver::brute_force( std::string_view message, reflector reflector, std::span
 								return { { left_idx, middle_left_index, middle_right_index, right_index },
 										 { 0, 0, middle_right_ring_setting, right_ring_setting },
 										 key };
+							}
+
+							progress += std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26;
+							if ( progress_update )
+							{
+								progress_update( progress, total );
 							}
 						}
 					}
