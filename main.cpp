@@ -36,11 +36,11 @@ int main( int, char** )
 		using namespace std::chrono_literals;
 		const auto now = std::chrono::steady_clock::now();
 		const auto elapsed = now - last_update_ts;
-		if ( elapsed > 2s )
+		if ( elapsed > 5s )
 		{
 			const auto last_progress = progress - last_update_progress;
 			const auto average_progress = static_cast<std::size_t>(
-				last_progress / ( 2'000'000. / std::chrono::duration_cast<std::chrono::microseconds>( elapsed ).count() ) );
+				last_progress / ( 5'000'000. / std::chrono::duration_cast<std::chrono::microseconds>( elapsed ).count() ) );
 			std::cout << "Cracking in progress... " << progress << '/' << total << " (" << average_progress << " combinations / second, ETA "
 					  << ( total - progress ) / average_progress / 60 << " minutes)" << std::endl;
 			last_update_ts = now;

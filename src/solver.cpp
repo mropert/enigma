@@ -1,7 +1,11 @@
 #include "enigma/solver.h"
 
+#include <atomic>
+#include <execution>
 #include <iostream>
+#include <numeric>
 #include <stdexcept>
+#include <thread>
 
 using namespace enigma;
 
@@ -11,10 +15,13 @@ m4_solver::settings m4_solver::brute_force( std::string_view message,
 											std::string_view plaintext,
 											std::function<void( std::size_t, std::size_t )> progress_update )
 {
-	std::size_t progress = 0;
-	const std::size_t total = std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26 * 26 * 26 * 26 * 26;
+	std::atomic<std::size_t> progress = 0;
+	const std::size_t total = std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26 * 26 * 26 * 26;
 
 	std::array<rotor, 4> wheels = { rotors[ 0 ], rotors[ 0 ], rotors[ 0 ], rotors[ 0 ] };
+
+	const auto root_thread_id = std::this_thread::get_id();
+	settings found_settings;
 
 	// Leftmost rotor, beta or gamma
 	for ( char left_idx = 9; left_idx <= 10; ++left_idx )
@@ -43,36 +50,57 @@ m4_solver::settings m4_solver::brute_force( std::string_view message,
 					}
 					wheels[ 3 ] = rotors[ right_index ];
 
-					for ( char middle_right_ring_setting = 0; middle_right_ring_setting < 26; ++middle_right_ring_setting )
+					std::atomic_bool found = false;
+
+					std::array<char, 26> values;
+					std::iota( begin( values ), end( values ), 0 );
+
+					std::for_each( std::execution::par_unseq,
+								   begin( values ),
+								   end( values ),
+								   [ & ]( char right_ring_setting )
+								   {
+#ifdef _DEBUG
+									   std::cout << "Trying rotors (" << int( left_idx ) << ", " << int( middle_left_index ) << ", "
+												 << int( middle_right_index ) << ", " << int( right_index ) << "), settings (0, 0, "
+												 << int( 0 ) << ", " << int( right_ring_setting ) << ")" << std::endl;
+#endif
+
+
+									   const auto key = brute_force_key( message,
+																		 wheels,
+																		 { 0, 0, 0, right_ring_setting },
+																		 reflector,
+																		 plugs,
+																		 plaintext );
+									   if ( !key.empty() )
+									   {
+										   found = true;
+										   found_settings = { { left_idx, middle_left_index, middle_right_index, right_index },
+															  { 0, 0, 0, right_ring_setting },
+															  key };
+									   }
+
+									   if ( found )
+									   {
+										   return;
+									   }
+
+									   progress += std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26;
+									   if ( progress_update && root_thread_id == std::this_thread::get_id() )
+									   {
+										   progress_update( progress, total );
+									   }
+								   } );
+
+					if ( found )
 					{
-						for ( char right_ring_setting = 0; right_ring_setting < 26; ++right_ring_setting )
+						const auto final_settings = fine_tune_key( message, found_settings, reflector, plugs, plaintext );
+						if ( !final_settings )
 						{
-							#ifdef _DEBUG
-							std::cout << "Trying rotors (" << int( left_idx ) << ", " << int( middle_left_index ) << ", "
-									  << int( middle_right_index ) << ", " << int( right_index ) << "), settings (0, 0, "
-									  << int( middle_right_ring_setting ) << ", " << int( right_ring_setting ) << ")" << std::endl;
-							#endif
-
-
-							const auto key = brute_force_key( message,
-															  wheels,
-															  { 0, 0, middle_right_ring_setting, right_ring_setting },
-															  reflector,
-															  plugs,
-															  plaintext );
-							if ( !key.empty() )
-							{
-								return { { left_idx, middle_left_index, middle_right_index, right_index },
-										 { 0, 0, middle_right_ring_setting, right_ring_setting },
-										 key };
-							}
-
-							progress += std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26;
-							if ( progress_update )
-							{
-								progress_update( progress, total );
-							}
+							throw std::logic_error( "Fine tune is borked" );
 						}
+						return *final_settings;
 					}
 				}
 			}
@@ -108,11 +136,44 @@ std::string m4_solver::brute_force_key( std::string_view message,
 				{
 					key[ 3 ] = 'A' + l;
 					machine.decode( message, key, result_buffer );
-					if ( result_buffer == plaintext )
+					if ( partial_match_score( plaintext, result_buffer ) > plaintext.size() / 4 )
 					{
 						return key;
 					}
 				}
+			}
+		}
+	}
+
+	return {};
+}
+
+std::optional<m4_solver::settings> m4_solver::fine_tune_key( std::string_view message,
+															 const settings& settings,
+															 reflector reflector,
+															 std::span<const char* const> plugs,
+															 std::string_view plaintext )
+{
+	const std::array<rotor, 4> wheels = { rotors[ settings.m_rotors[ 0 ] ],
+										  rotors[ settings.m_rotors[ 1 ] ],
+										  rotors[ settings.m_rotors[ 2 ] ],
+										  rotors[ settings.m_rotors[ 3 ] ] };
+	std::string key = settings.m_key;
+
+	for ( char middle_right_ring = 0; middle_right_ring < 26; ++middle_right_ring )
+	{
+		key[ 2 ] = ( settings.m_key[ 2 ] - 'A' + middle_right_ring - settings.m_ring_settings[ 2 ] + 26 ) % 26 + 'A';
+		for ( char right_ring = 0; right_ring < 26; ++right_ring )
+		{
+			key[ 3 ] = ( settings.m_key[ 3 ] - 'A' + right_ring - settings.m_ring_settings[ 3 ] + 26 ) % 26 + 'A';
+			const m4_machine machine( wheels, { 0, 0, middle_right_ring, right_ring }, reflector, plugs );
+			if ( machine.decode( message, key ) == plaintext )
+			{
+				auto final_settings = settings;
+				final_settings.m_ring_settings[ 2 ] = middle_right_ring;
+				final_settings.m_ring_settings[ 3 ] = right_ring;
+				final_settings.m_key = key;
+				return final_settings;
 			}
 		}
 	}
