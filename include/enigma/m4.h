@@ -75,7 +75,7 @@ namespace enigma
 	{
 	public:
 		m4_machine( const std::array<rotor, 4>& rotors,
-					std::array<char, 4> ring_settings,
+					std::array<int, 4> ring_settings,
 					reflector reflector,
 					std::span<const char* const> plugs );
 
@@ -85,7 +85,7 @@ namespace enigma
 
 	private:
 		std::array<rotor, 4> m_rotors;
-		std::array<char, 4> m_rings_settings;
+		std::array<int, 4> m_rings_settings;
 		reflector m_reflector;
 		std::array<char, 26> m_plugboard;
 	};

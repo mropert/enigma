@@ -4,7 +4,7 @@ using enigma::m4_machine;
 using enigma::rotor;
 
 m4_machine::m4_machine( const std::array<rotor, 4>& rotors,
-						std::array<char, 4> ring_settings,
+						std::array<int, 4> ring_settings,
 						reflector reflector,
 						std::span<const char* const> plugs )
 	: m_rotors( rotors )
@@ -40,10 +40,10 @@ void m4_machine::decode( std::string_view message, std::string_view key, std::st
 
 	const std::array<char, 4> start_positions = { key[ 0 ] - 'A', key[ 1 ] - 'A', key[ 2 ] - 'A', key[ 3 ] - 'A' };
 
-	std::array<int, 4> offsets = { start_positions[ 0 ] - m_rings_settings[ 0 ],
-								   start_positions[ 1 ] - m_rings_settings[ 1 ],
-								   start_positions[ 2 ] - m_rings_settings[ 2 ],
-								   start_positions[ 3 ] - m_rings_settings[ 3 ] };
+	std::array<int, 4> offsets = { ( start_positions[ 0 ] - m_rings_settings[ 0 ] + 26 ) % 26,
+								   ( start_positions[ 1 ] - m_rings_settings[ 1 ] + 26 ) % 26,
+								   ( start_positions[ 2 ] - m_rings_settings[ 2 ] + 26 ) % 26,
+								   ( start_positions[ 3 ] - m_rings_settings[ 3 ] + 26 ) %26 };
 
 	auto output_iterator = begin( output );
 	for ( const auto character : message )

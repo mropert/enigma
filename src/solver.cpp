@@ -60,13 +60,6 @@ m4_solver::settings m4_solver::brute_force( std::string_view message,
 								   end( values ),
 								   [ & ]( char right_ring_setting )
 								   {
-#ifdef _DEBUG
-									   std::cout << "Trying rotors (" << int( left_idx ) << ", " << int( middle_left_index ) << ", "
-												 << int( middle_right_index ) << ", " << int( right_index ) << "), settings (0, 0, "
-												 << int( 0 ) << ", " << int( right_ring_setting ) << ")" << std::endl;
-#endif
-
-
 									   const auto key = brute_force_key( message,
 																		 wheels,
 																		 { 0, 0, 0, right_ring_setting },
@@ -113,7 +106,7 @@ m4_solver::settings m4_solver::brute_force( std::string_view message,
 
 std::string m4_solver::brute_force_key( std::string_view message,
 										const std::array<rotor, 4>& rotors,
-										std::array<char, 4> ring_settings,
+										std::array<int, 4> ring_settings,
 										reflector reflector,
 										std::span<const char* const> plugs,
 										std::string_view plaintext )
@@ -136,7 +129,7 @@ std::string m4_solver::brute_force_key( std::string_view message,
 				{
 					key[ 3 ] = 'A' + l;
 					machine.decode( message, key, result_buffer );
-					if ( partial_match_score( plaintext, result_buffer ) > plaintext.size() / 4 )
+					if ( unknown_plugboard_match_score( plaintext, result_buffer ) >= plaintext.size() / 10 )
 					{
 						return key;
 					}
@@ -160,20 +153,23 @@ std::optional<m4_solver::settings> m4_solver::fine_tune_key( std::string_view me
 										  rotors[ settings.m_rotors[ 3 ] ] };
 	std::string key = settings.m_key;
 
-	for ( char middle_right_ring = 0; middle_right_ring < 26; ++middle_right_ring )
+	for ( int i = 0; i < 26; ++i )
 	{
-		key[ 2 ] = ( settings.m_key[ 2 ] - 'A' + middle_right_ring - settings.m_ring_settings[ 2 ] + 26 ) % 26 + 'A';
-		for ( char right_ring = 0; right_ring < 26; ++right_ring )
+		key[ 2 ] = 'A' + i;
+		for ( char middle_right_ring = 0; middle_right_ring < 26; ++middle_right_ring )
 		{
-			key[ 3 ] = ( settings.m_key[ 3 ] - 'A' + right_ring - settings.m_ring_settings[ 3 ] + 26 ) % 26 + 'A';
-			const m4_machine machine( wheels, { 0, 0, middle_right_ring, right_ring }, reflector, plugs );
-			if ( machine.decode( message, key ) == plaintext )
+			for ( char right_ring = 0; right_ring < 26; ++right_ring )
 			{
-				auto final_settings = settings;
-				final_settings.m_ring_settings[ 2 ] = middle_right_ring;
-				final_settings.m_ring_settings[ 3 ] = right_ring;
-				final_settings.m_key = key;
-				return final_settings;
+				key[ 3 ] = ( settings.m_key[ 3 ] - 'A' + right_ring - settings.m_ring_settings[ 3 ] + 26 ) % 26 + 'A';
+				const m4_machine machine( wheels, { 0, 0, middle_right_ring, right_ring }, reflector, plugs );
+				if ( machine.decode( message, key ) == plaintext )
+				{
+					auto final_settings = settings;
+					final_settings.m_ring_settings[ 2 ] = middle_right_ring;
+					final_settings.m_ring_settings[ 3 ] = right_ring;
+					final_settings.m_key = key;
+					return final_settings;
+				}
 			}
 		}
 	}
