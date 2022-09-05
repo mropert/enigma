@@ -6,8 +6,44 @@
 #include <numeric>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 using namespace enigma;
+
+std::vector<std::array<int, 4>> generate_rotor_combinations()
+{
+	std::vector<std::array<int, 4>> combinations;
+	combinations.reserve( 2 * 8 * 7 * 6 );
+
+	// Leftmost rotor, beta or gamma
+	for ( int left_idx = 9; left_idx <= 10; ++left_idx )
+	{
+		// Middle left rotor, I to VIII
+		for ( int middle_left_index = 1; middle_left_index <= 8; ++middle_left_index )
+		{
+			// Middle right rotor, I to VIII
+			for ( int middle_right_index = 1; middle_right_index <= 8; ++middle_right_index )
+			{
+				if ( middle_right_index == middle_left_index )
+				{
+					continue;
+				}
+
+				for ( int right_index = 1; right_index <= 8; ++right_index )
+				{
+					if ( right_index == middle_left_index || right_index == middle_right_index )
+					{
+						continue;
+					}
+
+					combinations.emplace_back( std::array<int, 4> { left_idx, middle_left_index, middle_right_index, right_index } );
+				}
+			}
+		}
+	}
+
+	return combinations;
+}
 
 m4_solver::settings m4_solver::brute_force( std::string_view message,
 											reflector reflector,
@@ -16,88 +52,50 @@ m4_solver::settings m4_solver::brute_force( std::string_view message,
 											std::function<void( std::size_t, std::size_t )> progress_update )
 {
 	std::atomic<std::size_t> progress = 0;
-	const std::size_t total = std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26 * 26 * 26 * 26;
+	const std::size_t total = std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26 * 26 * 26;
 
-	std::array<rotor, 4> wheels = { rotors[ 0 ], rotors[ 0 ], rotors[ 0 ], rotors[ 0 ] };
+	static const auto rotor_combinations = generate_rotor_combinations();
 
 	const auto root_thread_id = std::this_thread::get_id();
 	settings found_settings;
+	std::atomic_bool found = false;
 
-	// Leftmost rotor, beta or gamma
-	for ( char left_idx = 9; left_idx <= 10; ++left_idx )
+	std::for_each( std::execution::par_unseq,
+				   begin( rotor_combinations ),
+				   end( rotor_combinations ),
+				   [ & ]( const std::array<int, 4>& rotor_settings )
+				   {
+					   const std::array<rotor, 4> wheels = { rotors[ rotor_settings[ 0 ] ],
+															 rotors[ rotor_settings[ 1 ] ],
+															 rotors[ rotor_settings[ 2 ] ],
+															 rotors[ rotor_settings[ 3 ] ] };
+					   const auto key = brute_force_key( message, wheels, { 0, 0, 0, 0 }, reflector, plugs, plaintext );
+					   if ( !key.empty() )
+					   {
+						   found = true;
+						   found_settings = { rotor_settings, { 0, 0, 0, 0 }, key };
+					   }
+
+					   if ( found )
+					   {
+						   return;
+					   }
+
+					   progress += 26 * 26 * 26 * 26;
+					   if ( progress_update && root_thread_id == std::this_thread::get_id() )
+					   {
+						   progress_update( progress, total );
+					   }
+				   } );
+
+	if ( found )
 	{
-		wheels[ 0 ] = rotors[ left_idx ];
-
-		// Middle left rotor, I to VIII
-		for ( char middle_left_index = 1; middle_left_index <= 8; ++middle_left_index )
+		const auto final_settings = fine_tune_key( message, found_settings, reflector, plugs, plaintext );
+		if ( !final_settings )
 		{
-			wheels[ 1 ] = rotors[ middle_left_index ];
-			// Middle right rotor, I to VIII
-			for ( char middle_right_index = 1; middle_right_index <= 8; ++middle_right_index )
-			{
-				if ( middle_right_index == middle_left_index )
-				{
-					continue;
-				}
-				wheels[ 2 ] = rotors[ middle_right_index ];
-
-				// Right rotor, I to VIII
-				for ( char right_index = 1; right_index <= 8; ++right_index )
-				{
-					if ( right_index == middle_left_index || right_index == middle_right_index )
-					{
-						continue;
-					}
-					wheels[ 3 ] = rotors[ right_index ];
-
-					std::atomic_bool found = false;
-
-					std::array<char, 26> values;
-					std::iota( begin( values ), end( values ), 0 );
-
-					std::for_each( std::execution::par_unseq,
-								   begin( values ),
-								   end( values ),
-								   [ & ]( char right_ring_setting )
-								   {
-									   const auto key = brute_force_key( message,
-																		 wheels,
-																		 { 0, 0, 0, right_ring_setting },
-																		 reflector,
-																		 plugs,
-																		 plaintext );
-									   if ( !key.empty() )
-									   {
-										   found = true;
-										   found_settings = { { left_idx, middle_left_index, middle_right_index, right_index },
-															  { 0, 0, 0, right_ring_setting },
-															  key };
-									   }
-
-									   if ( found )
-									   {
-										   return;
-									   }
-
-									   progress += std::size_t( 2 ) * 8 * 7 * 6 * 26 * 26;
-									   if ( progress_update && root_thread_id == std::this_thread::get_id() )
-									   {
-										   progress_update( progress, total );
-									   }
-								   } );
-
-					if ( found )
-					{
-						const auto final_settings = fine_tune_key( message, found_settings, reflector, plugs, plaintext );
-						if ( !final_settings )
-						{
-							throw std::logic_error( "Fine tune is borked" );
-						}
-						return *final_settings;
-					}
-				}
-			}
+			throw std::logic_error( "Fine tune is borked" );
 		}
+		return *final_settings;
 	}
 
 	throw std::logic_error( "Should have matched" );
