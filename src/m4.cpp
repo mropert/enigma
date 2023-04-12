@@ -43,7 +43,7 @@ void m4_machine::decode( std::string_view message, std::string_view key, std::st
 	std::array<int, 4> offsets = { ( start_positions[ 0 ] - m_rings_settings[ 0 ] + 26 ) % 26,
 								   ( start_positions[ 1 ] - m_rings_settings[ 1 ] + 26 ) % 26,
 								   ( start_positions[ 2 ] - m_rings_settings[ 2 ] + 26 ) % 26,
-								   ( start_positions[ 3 ] - m_rings_settings[ 3 ] + 26 ) %26 };
+								   ( start_positions[ 3 ] - m_rings_settings[ 3 ] + 26 ) % 26 };
 
 	auto output_iterator = begin( output );
 	for ( const auto character : message )
@@ -89,4 +89,71 @@ std::string m4_machine::decode( std::string_view message, std::string_view key )
 	std::string result;
 	decode( message, key, result );
 	return result;
+}
+
+std::string m4_machine::advance_key( std::string_view key, std::size_t position ) const
+{
+	const std::array<char, 4> start_positions = { key[ 0 ] - 'A', key[ 1 ] - 'A', key[ 2 ] - 'A', key[ 3 ] - 'A' };
+
+	std::array<int, 4> offsets = { ( start_positions[ 0 ] - m_rings_settings[ 0 ] + 26 ) % 26,
+								   ( start_positions[ 1 ] - m_rings_settings[ 1 ] + 26 ) % 26,
+								   ( start_positions[ 2 ] - m_rings_settings[ 2 ] + 26 ) % 26,
+								   ( start_positions[ 3 ] - m_rings_settings[ 3 ] + 26 ) % 26 };
+
+	for ( ; position != 0; --position )
+	{
+		if ( m_rotors[ 3 ].m_turnovers[ 0 ] == offsets[ 3 ] || m_rotors[ 3 ].m_turnovers[ 1 ] == offsets[ 3 ] )
+		{
+			offsets[ 2 ] = ( offsets[ 2 ] + 1 ) % 26;
+		}
+		else if ( m_rotors[ 2 ].m_turnovers[ 0 ] == offsets[ 2 ] || m_rotors[ 2 ].m_turnovers[ 1 ] == offsets[ 2 ] )
+		{
+			offsets[ 2 ] = ( offsets[ 2 ] + 1 ) % 26;
+			offsets[ 1 ] = ( offsets[ 1 ] + 1 ) % 26;
+		}
+
+		offsets[ 3 ] = ( offsets[ 3 ] + 1 ) % 26;
+	}
+
+	std::string result_key;
+	result_key += 'A' + ( ( offsets[ 0 ] + m_rings_settings[ 0 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 1 ] + m_rings_settings[ 1 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 2 ] + m_rings_settings[ 2 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 3 ] + m_rings_settings[ 3 ] ) % 26 );
+
+	return result_key;
+}
+
+std::string m4_machine::rollback_key( std::string_view key, std::size_t position ) const
+{
+	const std::array<char, 4> start_positions = { key[ 0 ] - 'A', key[ 1 ] - 'A', key[ 2 ] - 'A', key[ 3 ] - 'A' };
+
+	std::array<int, 4> offsets = { ( start_positions[ 0 ] - m_rings_settings[ 0 ] + 26 ) % 26,
+								   ( start_positions[ 1 ] - m_rings_settings[ 1 ] + 26 ) % 26,
+								   ( start_positions[ 2 ] - m_rings_settings[ 2 ] + 26 ) % 26,
+								   ( start_positions[ 3 ] - m_rings_settings[ 3 ] + 26 ) % 26 };
+
+	for ( ; position != 0; --position )
+	{
+
+		offsets[ 3 ] = ( offsets[ 3 ] - 1 + 26 ) % 26;
+
+		if ( m_rotors[ 3 ].m_turnovers[ 0 ] == offsets[ 3 ] || m_rotors[ 3 ].m_turnovers[ 1 ] == offsets[ 3 ] )
+		{
+			offsets[ 2 ] = ( offsets[ 2 ] - 1 + 26 ) % 26;
+		}
+		else if ( m_rotors[ 2 ].m_turnovers[ 0 ] == offsets[ 2 ] || m_rotors[ 2 ].m_turnovers[ 1 ] == offsets[ 2 ] )
+		{
+			offsets[ 2 ] = ( offsets[ 2 ] - 1 + 26 ) % 26;
+			offsets[ 1 ] = ( offsets[ 1 ] - 1 + 26 ) % 26;
+		}
+	}
+
+	std::string result_key;
+	result_key += 'A' + ( ( offsets[ 0 ] + m_rings_settings[ 0 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 1 ] + m_rings_settings[ 1 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 2 ] + m_rings_settings[ 2 ] ) % 26 );
+	result_key += 'A' + ( ( offsets[ 3 ] + m_rings_settings[ 3 ] ) % 26 );
+
+	return result_key;
 }

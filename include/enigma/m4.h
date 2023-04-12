@@ -81,7 +81,10 @@ namespace enigma
 
 		void decode( std::string_view message, std::string_view key, std::string& output ) const;
 		// Convenience method for one shot decodes (no ouput buffer reuse)
-		std::string decode( std::string_view message, std::string_view key ) const;
+		[[nodiscard]] std::string decode( std::string_view message, std::string_view key ) const;
+
+		[[nodiscard]] std::string advance_key( std::string_view key, std::size_t position ) const;
+		[[nodiscard]] std::string rollback_key( std::string_view key, std::size_t position ) const;
 
 	private:
 		std::array<rotor, 4> m_rotors;

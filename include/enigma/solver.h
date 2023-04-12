@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace enigma
 {
@@ -20,12 +21,12 @@ namespace enigma
 			std::string m_key;
 		};
 
-		std::string brute_force_key( std::string_view message,
-									 const std::array<rotor, 4>& rotors,
-									 std::array<int, 4> ring_settings,
-									 reflector reflector,
-									 std::span<const char* const> plugs,
-									 std::string_view plaintext );
+		std::vector<std::string> brute_force_key( std::string_view message,
+												  const std::array<rotor, 4>& rotors,
+												  std::array<int, 4> ring_settings,
+												  reflector reflector,
+												  std::span<const char* const> plugs,
+												  std::string_view plaintext );
 
 		std::optional<settings> fine_tune_key( std::string_view message,
 											   const settings& settings,
@@ -33,11 +34,11 @@ namespace enigma
 											   std::span<const char* const> plugs,
 											   std::string_view plaintext );
 
-		settings brute_force( std::string_view message,
-							  reflector reflector,
-							  std::span<const char* const> plugs,
-							  std::string_view plaintext,
-							  std::function<void( std::size_t, std::size_t )> progress_update = {} );
+		std::optional<settings> brute_force( std::string_view message,
+											 reflector reflector,
+											 std::span<const char* const> plugs,
+											 std::string_view plaintext,
+											 std::function<void( std::size_t, std::size_t, std::size_t )> progress_update = {} );
 	}
 
 	inline std::size_t partial_match_score( std::string_view plaintext, std::string_view candidate )
@@ -50,18 +51,25 @@ namespace enigma
 			if ( plaintext[ i ] == candidate[ i ] )
 			{
 				++matches;
-				if ( matches > score )
-				{
-					score = matches;
-				}
 			}
 			else
 			{
+				score += matches * matches;
 				matches = 0;
 			}
 		}
 
+		score += matches * matches;
+
 		return score;
+	}
+
+	inline std::size_t partial_match_reference_score( std::size_t message_length )
+	{
+		// Pure random would get roughly 1 in 26 letters correct
+		// (Give or take since natural language doesn't use all letters with same frequency)
+		// Testing gave between 0.04 and 0.05 score per letter in the message for wrong settings
+		return message_length * 0.05 * 5;
 	}
 
 	inline std::size_t unknown_plugboard_match_score( std::string_view plaintext, std::string_view candidate )
@@ -94,6 +102,8 @@ namespace enigma
 		{
 			sum += count * ( count - 1 );
 		}
-		return static_cast<float>( sum ) / text.size();
+		return static_cast<float>( sum ) * 26 / ( text.size() * ( text.size() - 1 ) );
 	}
+
+	std::vector<int> find_potential_crib_location( std::string_view cyphertext, std::string_view crib );
 }
