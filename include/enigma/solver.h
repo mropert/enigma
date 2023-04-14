@@ -12,6 +12,14 @@
 
 namespace enigma
 {
+	// Declarations
+
+	std::size_t partial_match_score( std::string_view plaintext, std::string_view candidate );
+	std::size_t partial_match_reference_score( std::size_t message_length );
+	std::size_t unknown_plugboard_match_score( std::string_view plaintext, std::string_view candidate );
+	float index_of_coincidence( std::string_view text );
+	std::vector<int> find_potential_crib_location( std::string_view cyphertext, std::string_view crib );
+
 	namespace m4_solver
 	{
 		struct settings
@@ -21,12 +29,13 @@ namespace enigma
 			std::string m_key;
 		};
 
-		std::vector<std::string> brute_force_key( std::string_view message,
-												  const std::array<rotor, 4>& rotors,
-												  std::array<int, 4> ring_settings,
-												  reflector reflector,
-												  std::span<const char* const> plugs,
-												  std::string_view plaintext );
+		using progress_fn = std::function<void( std::size_t, std::size_t, std::size_t )>;
+
+		std::optional<settings> crack_settings( std::string_view message,
+												reflector reflector,
+												std::span<const char* const> plugs,
+												std::string_view plaintext,
+												progress_fn progress = {} );
 
 		std::optional<settings> fine_tune_key( std::string_view message,
 											   const settings& settings,
@@ -34,12 +43,16 @@ namespace enigma
 											   std::span<const char* const> plugs,
 											   std::string_view plaintext );
 
-		std::optional<settings> brute_force( std::string_view message,
-											 reflector reflector,
-											 std::span<const char* const> plugs,
-											 std::string_view plaintext,
-											 std::function<void( std::size_t, std::size_t, std::size_t )> progress_update = {} );
+		// For testing, mostly
+		std::vector<std::string> crack_key( std::string_view message,
+											const std::array<rotor, 4>& rotors,
+											const std::array<int, 4> ring_settings,
+											reflector reflector,
+											std::span<const char* const> plugs,
+											std::string_view plaintext );
 	}
+
+	// Inline implementations
 
 	inline std::size_t partial_match_score( std::string_view plaintext, std::string_view candidate )
 	{
@@ -104,6 +117,4 @@ namespace enigma
 		}
 		return static_cast<float>( sum ) * 26 / ( text.size() * ( text.size() - 1 ) );
 	}
-
-	std::vector<int> find_potential_crib_location( std::string_view cyphertext, std::string_view crib );
 }

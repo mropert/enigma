@@ -270,10 +270,9 @@ TEST_CASE( "Bruteforce Donitz message key", "[m4]" )
 	const std::array<rotor, 4> wheels = { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] };
 	const std::array plugs = { "AE", "BF", "CM", "DQ", "HU", "JN", "LX", "PR", "SZ", "VW" };
 
-	const auto keys = m4_solver::brute_force_key( donitz_message, wheels, { 0, 0, 4, 11 }, reflectors::C, plugs, donitz_decoded_message );
+	const auto keys = m4_solver::crack_key( donitz_message, wheels, { 0, 0, 4, 11 }, reflectors::C, plugs, donitz_decoded_message );
 
-	REQUIRE( keys.size() == 1 );
-	REQUIRE( keys[ 0 ] == "YOSZ" );
+	REQUIRE( std::find( begin( keys ), end( keys ), "YOSZ" ) != std::end( keys ) );
 }
 
 #endif

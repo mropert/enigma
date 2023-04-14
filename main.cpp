@@ -76,7 +76,7 @@ void break_message( std::string_view cyphertext,
 
 	auto on_update = make_cracking_progress_counter();
 
-	const auto settings = enigma::m4_solver::brute_force( cyphertext, reflector, plugs, plaintext, on_update );
+	const auto settings = enigma::m4_solver::crack_settings( cyphertext, reflector, plugs, plaintext, on_update );
 
 	if ( settings )
 	{
@@ -102,7 +102,7 @@ std::optional<enigma::m4_solver::settings> try_break_message_with_crib_at( std::
 
 	auto on_update = make_cracking_progress_counter();
 
-	auto settings = m4_solver::brute_force( crib_cyphertext, reflector, plugs, crib, on_update );
+	auto settings = m4_solver::crack_settings( crib_cyphertext, reflector, plugs, crib, on_update );
 	if ( !settings )
 	{
 		// No dice, probably wrong crib guess
