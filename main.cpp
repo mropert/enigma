@@ -228,14 +228,113 @@ void compute_partial_scores()
 	}
 }
 
+std::string partial_decrypt_at( std::string_view key, std::size_t start, std::size_t location, std::size_t length, const std::span<const char* const> plugs )
+{
+	using namespace enigma;
+	constexpr std::array<rotor, 4> wheels = { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] };
+	constexpr std::array ring_settings = { 0, 0, 4, 11 };
+
+	m4_machine machine( wheels, ring_settings, reflectors::C, plugs );
+	auto new_key = machine.advance_key( key, start );
+
+	for ( int i = 0; i < 4; ++i )
+	{
+		new_key[ i ] = ( new_key[ i ] - 'A' - ring_settings[ i ] ) % 26 + 'A';
+	}
+
+	machine = { wheels, { 0, 0, 0, 0 }, reflectors::C, plugs };
+	return machine.decode( donitz_message.substr( start, location - start + length ), new_key ).substr( location - start );
+}
+
+std::string format_partial_decrypt( std::string_view plaintext, std::string_view candidate )
+{
+	std::string result;
+	result.reserve( candidate.size() );
+
+	for ( int i = 0; i < candidate.size(); ++i )
+	{
+		result += candidate[ i ] == plaintext[ i ] ? candidate[ i ] : '*';
+	}
+
+	return result;
+}
+
+void display_partial_decrypt_with_crib_at( std::string_view crib, std::size_t start, std::size_t location, std::span<const char* const> plugs )
+{
+	using enigma::partial_match_score;
+
+	{
+		const auto crib_out = partial_decrypt_at( "AAAA", start, location, crib.size(), plugs );
+		std::cout << std::format( "0: {} (score: {})\n", format_partial_decrypt( crib, crib_out ), partial_match_score( crib, crib_out ) );
+	}
+
+	{
+		const auto crib_out = partial_decrypt_at( "YAAA", start, location, crib.size(), plugs );
+		std::cout << std::format( "1: {} (score: {})\n", format_partial_decrypt( crib, crib_out ), partial_match_score( crib, crib_out ) );
+	}
+
+	{
+		const auto crib_out = partial_decrypt_at( "YOAA", start, location, crib.size(), plugs );
+		std::cout << std::format( "2: {} (score: {})\n", format_partial_decrypt( crib, crib_out ), partial_match_score( crib, crib_out ) );
+	}
+
+	{
+		const auto crib_out = partial_decrypt_at( "YOSA", start, location, crib.size(), plugs );
+		std::cout << std::format( "3: {} (score: {})\n", format_partial_decrypt( crib, crib_out ), partial_match_score( crib, crib_out ) );
+	}
+
+	{
+		const auto crib_out = partial_decrypt_at( "YOSZ", start, location, crib.size(), plugs );
+		std::cout << std::format( "4: {} (score: {})\n", format_partial_decrypt( crib, crib_out ), partial_match_score( crib, crib_out ) );
+	}
+}
+
+void display_partial_decrypt_with_crib( std::string_view crib, std::size_t hint )
+{
+	using namespace enigma;
+
+	const auto location = donitz_decoded_message.find( crib );
+	auto locations = find_potential_crib_location( donitz_message, crib );
+	std::erase_if( locations, [ hint ]( std::size_t loc ) { return loc < hint; } );
+
+	constexpr std::array plugs = { "AE", "BF", "CM", "DQ", "HU", "JN", "LX", "PR", "SZ", "VW" };
+
+
+	std::cout << std::format( "Crib: {}, length: {}, hint: {}, first guess {}, correct location: {}\n",
+							  crib,
+							  crib.size(),
+							  hint,
+							  locations[ 0 ],
+							  location );
+
+	std::cout << std::format( "With plugboard from location (ref score: {})\n", partial_match_reference_score( crib.size() ) );
+	display_partial_decrypt_with_crib_at( crib, location, location, plugs );
+
+	std::cout << std::format( "With plugboard from hint (ref score: {})\n", partial_match_reference_score( crib.size() ) );
+	display_partial_decrypt_with_crib_at( crib, hint, location, plugs );
+
+	std::cout << std::format( "Without plugboard from location (ref score: {})\n", crib.size() / 10 );
+	display_partial_decrypt_with_crib_at( crib, location, location, {} );
+}
+
 
 int main( int argc, char** argv )
 {
 	using namespace std::literals;
 
+	//constexpr std::string_view crib = "XGEZXREICHSLEITEIKKTULPEKKJBORMANNJXX";
+	//constexpr std::size_t hint = donitz_message.size() * 0.75f;
+	constexpr std::string_view crib = "REICHSMARSCHALLSJGOERINGJ";
+	constexpr std::size_t hint = 0;
+	//constexpr std::string_view crib = "REICHSMARSCHALL";
+
 	if ( argc >= 2 && argv[ 1 ] == "-scores"sv )
 	{
 		compute_partial_scores();
+	}
+	else if ( argc >= 2 && argv[ 1 ] == "-partial"sv )
+	{
+		display_partial_decrypt_with_crib( crib, hint );
 	}
 	else
 	{
@@ -243,11 +342,6 @@ int main( int argc, char** argv )
 
 		if ( argc >= 2 && argv[ 1 ] == "-crib"sv )
 		{
-			constexpr std::string_view crib = "XGEZXREICHSLEITEIKKTULPEKKJBORMANNJXX";
-			constexpr std::size_t hint = donitz_message.size() * 0.75f;
-			//constexpr std::string_view crib = "REICHSMARSCHALLSJGOERINGJ";
-			//constexpr std::string_view crib = "REICHSMARSCHALL";
-
 			break_message_with_crib( donitz_message, donitz_decoded_message, enigma::reflectors::C, plugs, crib, hint );
 		}
 		else if ( argc >= 2 && argv[ 1 ] == "-plugboard"sv )
