@@ -89,59 +89,6 @@ void break_message( std::string_view cyphertext,
 	}
 }
 
-std::optional<enigma::m4_solver::settings> try_break_message_with_crib_at( std::string_view cyphertext,
-																		   std::string_view plaintext,
-																		   enigma::reflector reflector,
-																		   std::span<const char* const> plugs,
-																		   std::string_view crib,
-																		   std::size_t crib_location )
-{
-	using namespace enigma;
-
-	const auto crib_cyphertext = cyphertext.substr( crib_location, crib.size() );
-
-	auto on_update = make_cracking_progress_counter();
-
-	auto settings = m4_solver::crack_settings( crib_cyphertext, reflector, plugs, crib, on_update );
-	if ( !settings )
-	{
-		// No dice, probably wrong crib guess
-		return std::nullopt;
-	}
-
-	// Fix up key to account for rotor position at crib start
-	const m4_machine machine( { rotors[ settings->m_rotors[ 0 ] ],
-								rotors[ settings->m_rotors[ 1 ] ],
-								rotors[ settings->m_rotors[ 2 ] ],
-								rotors[ settings->m_rotors[ 3 ] ] },
-							  settings->m_ring_settings,
-							  reflector,
-							  plugs );
-	const auto candidate_key = machine.rollback_key( settings->m_key, crib_location );
-
-	settings->m_key = candidate_key;
-
-	// Rollback can sometimes yield incorrect 2nd and 3rd letter if we guessed middle right ring setting wrong
-	// Try fine tuning with nearby letters
-	for ( int middle_left_offset = -2; middle_left_offset <= 2; ++middle_left_offset )
-	{
-		settings->m_key[ 1 ] = 'A' + ( ( candidate_key[ 1 ] - 'A' + middle_left_offset + 26 ) % 26 );
-
-		for ( int middle_right_offset = -2; middle_right_offset <= 2; ++middle_right_offset )
-		{
-			settings->m_key[ 2 ] = 'A' + ( ( candidate_key[ 2 ] - 'A' + middle_right_offset + 26 ) % 26 );
-
-			const auto final_settings = m4_solver::fine_tune_key( cyphertext, *settings, reflector, plugs, plaintext );
-			if ( final_settings )
-			{
-				return final_settings;
-			}
-		}
-	}
-
-	return std::nullopt;
-}
-
 void break_message_with_crib( std::string_view cyphertext,
 							  std::string_view plaintext,
 							  enigma::reflector reflector,
@@ -151,8 +98,9 @@ void break_message_with_crib( std::string_view cyphertext,
 {
 	using namespace enigma;
 
-	auto locations = find_potential_crib_location( cyphertext, crib );
-	std::erase_if( locations, [ hint ]( std::size_t location ) { return location < hint; } );
+	const auto cyphertext_with_hint = cyphertext.substr( hint );
+
+	const auto locations = find_potential_crib_location( cyphertext_with_hint, crib );
 
 	if ( locations.empty() )
 	{
@@ -160,22 +108,58 @@ void break_message_with_crib( std::string_view cyphertext,
 		return;
 	}
 
-	std::cout << std::format( "Cracking message of {} characters using crib {} with {} threads\n",
-							  cyphertext.size(),
+	std::cout << std::format( "Cracking message of {} characters using crib {} ({} potential locations) with {} threads\n",
+							  cyphertext_with_hint.size(),
 							  crib,
+							  locations.size(),
 							  std::thread::hardware_concurrency() );
 
-	for ( int i = 0; i < locations.size(); ++i )
-	{
-		std::cout << std::format( "\nTrying crib position {} out of {} (offset {})\n", i, locations.size(), locations[ i ] );
-		const auto settings = try_break_message_with_crib_at( cyphertext, plaintext, reflector, plugs, crib, locations[ i ] );
+	auto on_update = make_cracking_progress_counter();
 
-		if ( settings )
+	auto settings = m4_solver::crack_settings_with_crib( cyphertext_with_hint, reflector, plugs, crib, locations, on_update );
+	if ( !settings )
+	{
+		// No dice, probably wrong crib guess
+		std::cout << "*** FAILED TO FIND MATCHING SETTINGS FOR CRIB ***\n";
+		return;
+	}
+
+	if ( hint > 0 )
+	{
+		auto partial_settings = *settings;
+		settings.reset();
+		// Fix up key to account for rotor position at hint start
+		const m4_machine machine( { rotors[ partial_settings.m_rotors[ 0 ] ],
+									rotors[ partial_settings.m_rotors[ 1 ] ],
+									rotors[ partial_settings.m_rotors[ 2 ] ],
+									rotors[ partial_settings.m_rotors[ 3 ] ] },
+								  partial_settings.m_ring_settings,
+								  reflector,
+								  plugs );
+		const auto candidate_key = machine.rollback_key( partial_settings.m_key, hint );
+
+		partial_settings.m_key = candidate_key;
+
+		// Rollback can sometimes yield incorrect 2nd and 3rd letter if we guessed middle right ring setting wrong
+		// Try fine tuning with nearby letters
+		for ( int middle_left_offset = -2; !settings && middle_left_offset <= 2; ++middle_left_offset )
 		{
-			std::cout << "Cracked message!\n";
-			print_settings( *settings );
-			return;
+			partial_settings.m_key[ 1 ] = 'A' + ( ( candidate_key[ 1 ] - 'A' + middle_left_offset + 26 ) % 26 );
+
+			for ( int middle_right_offset = -2; !settings && middle_right_offset <= 2; ++middle_right_offset )
+			{
+				partial_settings.m_key[ 2 ] = 'A' + ( ( candidate_key[ 2 ] - 'A' + middle_right_offset + 26 ) % 26 );
+
+				settings = m4_solver::fine_tune_key( cyphertext, partial_settings, reflector, plugs, plaintext );
+			}
 		}
+	}
+
+	if ( settings )
+	{
+		std::cout << "Cracked message!\n";
+		print_settings( *settings );
+		return;
 	}
 
 	std::cout << "*** FAILED TO FIND MATCHING SETTINGS FOR CRIB ***\n";

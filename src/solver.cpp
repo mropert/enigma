@@ -232,6 +232,33 @@ std::optional<m4_solver::settings> m4_solver::crack_settings( std::string_view m
 	}
 }
 
+std::optional<m4_solver::settings> m4_solver::crack_settings_with_crib( std::string_view message,
+																		reflector reflector,
+																		std::span<const char* const> plugs,
+																		std::string_view crib,
+																		std::span<const size_t> crib_locations,
+																		progress_fn progress )
+{
+	const auto score = [ crib, crib_locations ]( std::string_view candidate ) {
+		std::size_t best_score = 0;
+		for ( const auto location : crib_locations )
+		{
+			const auto score = partial_match_score( crib, candidate.substr( location, crib.size() ) );
+			if ( score > best_score )
+			{
+				best_score = score;
+			}
+		}
+		return best_score;
+	};
+	const auto target_score = partial_match_reference_score( crib.size() );
+	const auto match_heuristic = [ score, target_score ]( std::string_view candidate ) { return score( candidate ) >= target_score; };
+	const auto validate = [ crib ]( std::string_view candidate ) { return candidate.contains( crib ); };
+
+	return ::crack_settings( message, reflector, plugs, match_heuristic, score, validate, std::move( progress ) );
+}
+
+
 std::optional<m4_solver::settings> m4_solver::fine_tune_key( std::string_view message,
 															 const settings& settings,
 															 reflector reflector,
@@ -245,11 +272,11 @@ std::optional<m4_solver::settings> m4_solver::fine_tune_key( std::string_view me
 }
 
 std::vector<std::string> m4_solver::crack_key( std::string_view message,
-									const std::array<rotor, 4>& rotors,
-									const std::array<int, 4> ring_settings,
-									reflector reflector,
-									std::span<const char* const> plugs,
-									std::string_view plaintext )
+											   const std::array<rotor, 4>& rotors,
+											   const std::array<int, 4> ring_settings,
+											   reflector reflector,
+											   std::span<const char* const> plugs,
+											   std::string_view plaintext )
 {
 	const auto target_score = partial_match_reference_score( message.size() );
 	const auto match_heuristic = [ plaintext, target_score ]( std::string_view candidate ) {
@@ -275,9 +302,9 @@ namespace
 	}
 }
 
-std::vector<int> enigma::find_potential_crib_location( std::string_view cyphertext, std::string_view crib )
+std::vector<std::size_t> enigma::find_potential_crib_location( std::string_view cyphertext, std::string_view crib )
 {
-	std::vector<int> locations;
+	std::vector<std::size_t> locations;
 
 	for ( int i = 0; i + crib.size() <= cyphertext.size(); ++i )
 	{

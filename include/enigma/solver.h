@@ -18,7 +18,7 @@ namespace enigma
 	std::size_t partial_match_reference_score( std::size_t message_length );
 	std::size_t unknown_plugboard_match_score( std::string_view plaintext, std::string_view candidate );
 	float index_of_coincidence( std::string_view text );
-	std::vector<int> find_potential_crib_location( std::string_view cyphertext, std::string_view crib );
+	std::vector<std::size_t> find_potential_crib_location( std::string_view cyphertext, std::string_view crib );
 
 	namespace m4_solver
 	{
@@ -36,6 +36,13 @@ namespace enigma
 												std::span<const char* const> plugs,
 												std::string_view plaintext,
 												progress_fn progress = {} );
+
+		std::optional<settings> crack_settings_with_crib( std::string_view message,
+														  reflector reflector,
+														  std::span<const char* const> plugs,
+														  std::string_view crib,
+														  std::span<const std::size_t> crib_locations,
+														  progress_fn progress = {} );
 
 		std::optional<settings> fine_tune_key( std::string_view message,
 											   const settings& settings,

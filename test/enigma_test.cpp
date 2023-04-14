@@ -147,6 +147,7 @@ TEST_CASE( "Solver can fine tune partially matched settings", "[m4]" )
 		REQUIRE( result );
 		m4_machine machine( { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] }, result->m_ring_settings, reflectors::C, plugs );
 		const auto decoded_message = machine.decode( donitz_message, result->m_key );
+		REQUIRE( decoded_message == donitz_decoded_message );
 	}
 
 	{
@@ -158,6 +159,7 @@ TEST_CASE( "Solver can fine tune partially matched settings", "[m4]" )
 		REQUIRE( result );
 		m4_machine machine( { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] }, result->m_ring_settings, reflectors::C, plugs );
 		const auto decoded_message = machine.decode( donitz_message, result->m_key );
+		REQUIRE( decoded_message == donitz_decoded_message );
 	}
 
 	{
@@ -169,6 +171,7 @@ TEST_CASE( "Solver can fine tune partially matched settings", "[m4]" )
 		REQUIRE( result );
 		m4_machine machine( { rotors[ 9 ], rotors[ 5 ], rotors[ 6 ], rotors[ 8 ] }, result->m_ring_settings, reflectors::C, plugs );
 		const auto decoded_message = machine.decode( donitz_message, result->m_key );
+		REQUIRE( decoded_message == donitz_decoded_message );
 	}
 }
 
@@ -242,8 +245,8 @@ TEST_CASE( "Finding potential crib location", "[m4]" )
 
 	REQUIRE( std::find( begin( locations ), end( locations ), correct_location ) != end( locations ) );
 
-	std::vector<int> filtered_locations;
-	std::copy_if( begin( locations ), end( locations ), std::back_inserter( filtered_locations ), []( int location ) {
+	std::vector<std::size_t> filtered_locations;
+	std::copy_if( begin( locations ), end( locations ), std::back_inserter( filtered_locations ), []( std::size_t location ) {
 		return location >= donitz_message.size() * 0.75f;
 	} );
 
