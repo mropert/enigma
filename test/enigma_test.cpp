@@ -223,6 +223,15 @@ TEST_CASE( "Index of coincidence is higher with the right settings", "[m4]" )
 		const float score = index_of_coincidence( result );
 		REQUIRE( score > 1.2f );
 	}
+	#if 0
+	// This one doesn't even beat 1.0f, meaning it can't be distinguished from random :(
+	{
+		m4_machine machine( wheels, { 0, 0, 0, 0 }, reflectors::C, plugs );
+		const auto result = machine.decode( donitz_message, "YOOO" );
+		const float score = index_of_coincidence( result );
+		REQUIRE( score > 1.1f );
+	}
+	#endif
 	{
 		m4_machine machine( wheels, { 0, 0, 0, 0 }, reflectors::C, plugs );
 		const auto result = machine.decode( donitz_message, "AAAA" );

@@ -226,6 +226,7 @@ std::optional<m4_solver::settings> m4_solver::crack_settings( std::string_view m
 		const auto match_heuristic = [ plaintext, target_score ]( std::string_view candidate ) {
 			return partial_match_score( plaintext, candidate ) >= target_score;
 		};
+		// const auto match_heuristic = []( std::string_view candidate ) { return index_of_coincidence( candidate ) >= 1.05f; };
 		const auto score = [ plaintext ]( std::string_view candidate ) { return partial_match_score( plaintext, candidate ); };
 
 		return ::crack_settings( message, reflector, plugs, match_heuristic, score, validate, std::move( progress ) );
